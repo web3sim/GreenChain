@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Upload - GreenChain</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        input[type="file"] {
+            margin: 20px 0;
+            padding: 10px;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            width: 100%;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+        .loading {
+            display: none;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌱 GreenChain Storage Test</h1>
+        <p>Test the new decentralized storage system with multiple fallbacks:</p>
+        <ol>
+            <li><strong>JSONBin</strong> - Free cloud storage (up to 1MB)</li>
+            <li><strong>GitHub Gist</strong> - Public file storage</li>
+            <li><strong>Local Storage</strong> - Browser-based fallback</li>
+        </ol>
+        
+        <input type="file" id="fileInput" accept="image/*,.json,.txt" />
+        <button onclick="testUpload()">🚀 Test Upload</button>
+        
+        <div class="loading" id="loading">⏳ Uploading file...</div>
+        <div id="result"></div>
+    </div>
+
+    <script type="module">
+        import { uploadToIPFS, getIPFSGatewayURL } from './utils/decentralizedStorage.js';
+        
+        window.testUpload = async function() {
+            const fileInput = document.getElementById('fileInput');
+            const result = document.getElementById('result');
+            const loading = document.getElementById('loading');
+            
+            if (!fileInput.files.length) {
+                result.innerHTML = '<div class="result error">Please select a file first!</div>';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            loading.style.display = 'block';
+            result.innerHTML = '';
+            
+            try {
+                console.log('Uploading file:', file.name, file.size, 'bytes');
+                const hash = await uploadToIPFS(file);
+                
+                loading.style.display = 'none';
+                
+                let storageType = 'Unknown';
+                if (hash.startsWith('jsonbin_')) storageType = 'JSONBin (Cloud)';
+                else if (hash.startsWith('gist_')) storageType = 'GitHub Gist (Cloud)';
+                else if (hash.startsWith('blob_')) storageType = 'Local Storage (Browser)';
+                else storageType = 'IPFS (Decentralized)';
+                
+                const url = getIPFSGatewayURL(hash);
+                
+                result.innerHTML = `
+                    <div class="result">
+                        <h3>✅ Upload Successful!</h3>
+                        <p><strong>Storage Type:</strong> ${storageType}</p>
+                        <p><strong>File:</strong> ${file.name} (${Math.round(file.size/1024)}KB)</p>
+                        <p><strong>Storage ID:</strong> <code>${hash}</code></p>
+                        <p><strong>Access URL:</strong> <a href="${url}" target="_blank">${url}</a></p>
+                        ${file.type.startsWith('image/') ? `<img src="${url}" style="max-width: 300px; margin-top: 10px;" alt="Uploaded image">` : ''}
+                    </div>
+                `;
+                
+                console.log('Upload successful:', { hash, url, storageType });
+            } catch (error) {
+                loading.style.display = 'none';
+                result.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Upload Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Please check the console for more details.</p>
+                    </div>
+                `;
+                console.error('Upload failed:', error);
+            }
+        };
+    </script>
+</body>
+</html>
